@@ -1,0 +1,47 @@
+services:
+  postgres-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_DATABASE}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - bootcamp-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}"]
+      interval: 5s
+      retries: 5
+      timeout: 5s
+
+  backend:
+    image: bootcamp-backend
+    env_file: .env
+    ports:
+      - "${PORT:-3001}:${PORT:-3001}"
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    networks:
+      - bootcamp-network
+
+  frontend:
+    build:
+      context: ./bootcamp-demo-frontend
+    image: bootcamp-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - bootcamp-network
+
+networks:
+  bootcamp-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
